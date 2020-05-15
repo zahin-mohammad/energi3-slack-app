@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import requests
 import json
@@ -13,7 +15,7 @@ summary = f"api?module=account&action=eth_get_balance&address={address}"
 try:
     response = requests.get(f"{baseURL}{summary}")
     balance = int(response.json()["result"],0) / math.pow(10,18)
-    data = {'text': f'-balance: {balance} NRG \n-address: {address}'}
+    data = {'text': f'- balance: {balance} NRG \n- address: {address}'}
     response = requests.post(webhook, data=json.dumps(data), headers={'Content-Type': 'application/json'} , verify=True)
 except:
     response = requests.post(webhook, data=json.dumps(data), headers={'Content-Type': 'application/json'} , verify=True)
