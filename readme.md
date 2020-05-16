@@ -31,4 +31,4 @@ A slack custom integration using a heroku scheduler to update slack channel when
   - Download a private key from `settings -> Service Accounts`
   - Rename this file to `firestore-admin.json` 
 - Verify the script works
-  - `heroku run python3 ./bin/nrg-address-summary.py`
+  - `heroku run python3 ./bin/nrg-address-bot.py`
