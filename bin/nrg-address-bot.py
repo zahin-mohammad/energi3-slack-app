@@ -5,12 +5,28 @@ import sys
 import requests
 import json
 import math
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
 
-WEBHOOK = os.getenv('webhook')  # None
+# Create service account JSON file
+FIRESTORE_JSON = os.getenv('webhook') 
+WEBHOOK = os.getenv('webhook')
 ADDRESS_STRING = os.getenv('addressList')
-if WEBHOOK is None or ADDRESS_STRING is None:
+
+if WEBHOOK is None or ADDRESS_STRING is None or FIRESTORE_JSON is None :
     print("error: forgot env variables")
     sys.exit()
+
+with open("firestore-admin.json", "w") as jsonFile:
+    jsonFile.write(FIRESTORE_JSON)
+
+cred = credentials.Certificate('firestore-admin.json')
+firebase_admin.initialize_app(cred)
+db = firestore.client()
+
+# Differentiate people by their slack webhook
+doc_ref = db.collection("NRG").document(WEBHOOK[-24:])
 
 addressList = ADDRESS_STRING.split(' ')
 
@@ -42,17 +58,45 @@ try:
             balance = float(token["balance"])/math.pow(10, decimals)
             addressMap[address.lower()][sym] = balance
 
-    # used to see what changed from last poll
+    # see what changed from last poll
+    doc_ref = db.collection("NRG").document(WEBHOOK[-24:])
+    doc = doc_ref.get()
     addressMapDiff = {}
-    if os.path.exists(FILENAME):
-        with open(FILENAME) as json_file:
-            data = json.load(json_file)
 
-            for key in addressMap.keys():
-                if addressMap[key] != data[key]:
-                    addressMapDiff[key] = data[key]
+    if doc.exists:
+        data = doc.to_dict()
+        for key in addressMap.keys():
+            if addressMap[key] != data[key]:
+                addressMapDiff[key] = data[key]
+    else:
+        # send slack message on first run
+        messageBlocks = []
+        messageBlocks.append({
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Thanks for using NRG-bot! <https://github.com/zahin-mohammad/nrg-slack-app|Source Code!>\n"
+            }
+        })
 
-    # send slack message on first run or on change
+        for key, value in addressMap.items():
+            URL_EXPLORER = f"<https://explorer.energi.network/address/{key}|{key}>"
+            
+            for token, currentBalance in value.items():
+                tokenInfo = f"{token}: \n\tFiat: ${float(currentPrice['ethusd'])*currentBalance} USD \n\tCurrent: {currentBalance}"
+
+            messageBlocks.append({
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"`{URL_EXPLORER}`\n{tokenInfo}"
+                }
+            })
+
+        requests.post(WEBHOOK, data=json.dumps({"blocks": messageBlocks}), headers={
+                    'Content-Type': 'application/json'}, verify=True)
+
+    # send slack message on change from last poll
     if len(addressMapDiff) != 0:
         messageBlocks = []
         messageBlocks.append({
@@ -83,37 +127,9 @@ try:
 
         requests.post(WEBHOOK, data=json.dumps({"blocks": messageBlocks}), headers={
                     'Content-Type': 'application/json'}, verify=True)
-
-    elif not os.path.exists(FILENAME):
-        messageBlocks = []
-        messageBlocks.append({
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Thanks for using NRG-bot! <https://github.com/zahin-mohammad/nrg-slack-app|Source Code!>\n"
-            }
-        })
-
-        for key, value in addressMap.items():
-            URL_EXPLORER = f"<https://explorer.energi.network/address/{key}|{key}>"
-            
-            for token, currentBalance in value.items():
-                tokenInfo = f"{token}: \n\tFiat: ${float(currentPrice['ethusd'])*currentBalance} USD \n\tCurrent: {currentBalance}"
-
-            messageBlocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"`{URL_EXPLORER}`\n{tokenInfo}"
-                }
-            })
-
-        requests.post(WEBHOOK, data=json.dumps({"blocks": messageBlocks}), headers={
-                    'Content-Type': 'application/json'}, verify=True)
-
-
-    with open(FILENAME, 'w') as outfile:
-        json.dump(addressMap, outfile)
+                    
+    # write data to firestore
+    doc_ref.set(addressMap)
 
 except:
     response = requests.post(WEBHOOK, data=json.dumps({'text': "error, check heroku logs"}), headers={'Content-Type': 'application/json'} , verify=True)
