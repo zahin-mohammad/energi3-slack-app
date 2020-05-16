@@ -11,16 +11,17 @@ from firebase_admin import firestore
 
 # Create service account JSON file
 FIRESTORE_JSON = os.getenv('firestoreAdmin') 
-print(FIRESTORE_JSON)
 WEBHOOK = os.getenv('webhook')
 ADDRESS_STRING = os.getenv('addressList')
 
-if WEBHOOK is None or ADDRESS_STRING is None or FIRESTORE_JSON is None :
+if WEBHOOK is None or ADDRESS_STRING is None :
     print("error: forgot env variables")
     sys.exit()
-
-with open("firestore-admin.json", "w") as jsonFile:
-    jsonFile.write(FIRESTORE_JSON)
+if FIRESTORE_JSON is None:
+    print("warning: local use")
+else:
+    with open("firestore-admin.json", "w") as jsonFile:
+        jsonFile.write(FIRESTORE_JSON)
 
 cred = credentials.Certificate('firestore-admin.json')
 firebase_admin.initialize_app(cred)
@@ -67,7 +68,7 @@ try:
     if doc.exists:
         data = doc.to_dict()
         for key in addressMap.keys():
-            if addressMap[key] != data[key]:
+            if key in data and addressMap[key] != data[key] :
                 addressMapDiff[key] = data[key]
     else:
         # send slack message on first run
@@ -111,13 +112,12 @@ try:
         for key, value in addressMapDiff.items():
 
             URL_EXPLORER = f"<https://explorer.energi.network/address/{key}|{key}>"
-            
+            tokenInfo = ""
             for token, prevBalance in value.items():
                 currentBalance = addressMap[key][token]
                 diff = currentBalance - prevBalance
                 emoji = ":red_circle:" if currentBalance < prevBalance else ":large_blue_circle:"
-                tokenInfo = f"{token}: {emoji}\n\tFiat: ${float(currentPrice['ethusd'])*currentBalance} USD \n\tDifference: {diff}\n\tCurrent: {currentBalance}\n\tPrevious: {prevBalance}\n"
-
+                tokenInfo += f"{token}: {emoji}\n\tFiat: ${float(currentPrice['ethusd'])*currentBalance} USD \n\tDifference: {diff}\n\tCurrent: {currentBalance}\n\tPrevious: {prevBalance}\n"
             messageBlocks.append({
                 "type": "section",
                 "text": {
