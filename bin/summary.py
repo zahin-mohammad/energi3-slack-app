@@ -8,14 +8,22 @@ import math
 
 
 webhook = os.getenv('webhook') # None
-address = os.getenv('address')  
+addressString = os.getenv('addressList')
+addressList = addressString.split(' ')
+print(addressList)
+print(webhook)
+if webhook is None or addressList is None or len(addressList) == 0:
+    print("error: forgot env variables") 
 
-baseURL = "https://explorer.energi.network/"
-summary = f"api?module=account&action=eth_get_balance&address={address}"
+baseURL = "https://explorer.energi.network/api"
+multiAddressBalance = f"?module=account&action=balancemulti&address={','.join([str(address) for address in addressList])}"
+
+addressMap = {}
 try:
-    response = requests.get(f"{baseURL}{summary}")
-    balance = int(response.json()["result"],0) / math.pow(10,18)
-    data = {'text': f'- balance: {balance} NRG \n- address: {address}'}
-    response = requests.post(webhook, data=json.dumps(data), headers={'Content-Type': 'application/json'} , verify=True)
+    response = requests.get(f"{baseURL}{multiAddressBalance}")
+    for account in response.json()['result']:
+        addressMap[account["account"]] = float(account["balance"]) / math.pow(10,18)
+    print(addressMap)
+    response = requests.post(webhook, data=json.dumps({'text':json.dumps(addressMap, indent=2)}), headers={'Content-Type': 'application/json'} , verify=True)
 except:
-    response = requests.post(webhook, data=json.dumps(data), headers={'Content-Type': 'application/json'} , verify=True)
+    response = requests.post(webhook, data=json.dumps("error"), headers={'Content-Type': 'application/json'} , verify=True)
