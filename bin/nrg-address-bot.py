@@ -10,7 +10,7 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 
 # Create service account JSON file
-FIRESTORE_JSON = os.getenv('webhook') 
+FIRESTORE_JSON = os.getenv('firestoreAdmin') 
 print(FIRESTORE_JSON)
 WEBHOOK = os.getenv('webhook')
 ADDRESS_STRING = os.getenv('addressList')
