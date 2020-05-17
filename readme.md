@@ -1,5 +1,6 @@
 # NRG Slack Bot
-A slack custom integration using a heroku scheduler to update slack channel when an address(s) have balance changes.
+A slack custom integration using a heroku scheduler to update slack channel when an address(s) have balance changes.  
+
 ![Example of working bot](example.png)
 
 
