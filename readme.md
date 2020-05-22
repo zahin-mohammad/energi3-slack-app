@@ -22,7 +22,7 @@ A slack custom integration using a heroku scheduler to update slack channel when
 - Setup Environment Variables:
   - These can also be configured on the web client for heroku
   - `heroku config:set webhook="{slack incoming web hook}"`
-  - `heroku config:set addressList="{space separated list of addresses"`
+  - `heroku config:set addressList="{space separated list of addresses}"`
 - Install the scheduler via the CLI
   - `heroku addons:create scheduler:standard` 
 - Configure the scheduler 
